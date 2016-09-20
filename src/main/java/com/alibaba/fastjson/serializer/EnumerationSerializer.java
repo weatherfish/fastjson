@@ -13,16 +13,12 @@ public class EnumerationSerializer implements ObjectSerializer {
         SerializeWriter out = serializer.out;
 
         if (object == null) {
-            if (out.isEnabled(SerializerFeature.WriteNullListAsEmpty)) {
-                out.write("[]");
-            } else {
-                out.writeNull();
-            }
+            out.writeNull(SerializerFeature.WriteNullListAsEmpty);
             return;
         }
         
         Type elementType = null;
-        if (serializer.isEnabled(SerializerFeature.WriteClassName)) {
+        if (out.isEnabled(SerializerFeature.WriteClassName)) {
             if (fieldType instanceof ParameterizedType) {
                 ParameterizedType param = (ParameterizedType) fieldType;
                 elementType = param.getActualTypeArguments()[0];
@@ -31,7 +27,7 @@ public class EnumerationSerializer implements ObjectSerializer {
         
         Enumeration<?> e = (Enumeration<?>) object;
         
-        SerialContext context = serializer.getContext();
+        SerialContext context = serializer.context;
         serializer.setContext(context, object, fieldName, 0);
 
         try {
@@ -48,14 +44,12 @@ public class EnumerationSerializer implements ObjectSerializer {
                     continue;
                 }
 
-                Class<?> clazz = item.getClass();
-
-                ObjectSerializer itemSerializer = serializer.getObjectWriter(clazz);
+                ObjectSerializer itemSerializer = serializer.getObjectWriter(item.getClass());
                 itemSerializer.write(serializer, item, i - 1, elementType, 0);
             }
             out.append(']');
         } finally {
-            serializer.setContext(context);
+            serializer.context = context;
         }
     }
 }

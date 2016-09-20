@@ -18,19 +18,15 @@ package com.alibaba.fastjson.serializer;
 import java.io.IOException;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
-import java.util.AbstractCollection;
-import java.util.ArrayList;
 import java.util.Collection;
-import java.util.EnumSet;
 import java.util.HashSet;
-import java.util.LinkedHashSet;
 import java.util.TreeSet;
 
 import com.alibaba.fastjson.JSONArray;
-import com.alibaba.fastjson.JSONException;
 import com.alibaba.fastjson.parser.DefaultJSONParser;
 import com.alibaba.fastjson.parser.JSONToken;
 import com.alibaba.fastjson.parser.deserializer.ObjectDeserializer;
+import com.alibaba.fastjson.util.TypeUtils;
 
 /**
  * @author wenshao[szujobs@hotmail.com]
@@ -43,16 +39,12 @@ public class CollectionCodec implements ObjectSerializer, ObjectDeserializer {
         SerializeWriter out = serializer.out;
 
         if (object == null) {
-            if (out.isEnabled(SerializerFeature.WriteNullListAsEmpty)) {
-                out.write("[]");
-            } else {
-                out.writeNull();
-            }
+            out.writeNull(SerializerFeature.WriteNullListAsEmpty);
             return;
         }
 
         Type elementType = null;
-        if (serializer.isEnabled(SerializerFeature.WriteClassName)) {
+        if (out.isEnabled(SerializerFeature.WriteClassName)) {
             if (fieldType instanceof ParameterizedType) {
                 ParameterizedType param = (ParameterizedType) fieldType;
                 elementType = param.getActualTypeArguments()[0];
@@ -61,10 +53,10 @@ public class CollectionCodec implements ObjectSerializer, ObjectDeserializer {
 
         Collection<?> collection = (Collection<?>) object;
 
-        SerialContext context = serializer.getContext();
+        SerialContext context = serializer.context;
         serializer.setContext(context, object, fieldName, 0);
 
-        if (serializer.isEnabled(SerializerFeature.WriteClassName)) {
+        if (out.isEnabled(SerializerFeature.WriteClassName)) {
             if (HashSet.class == collection.getClass()) {
                 out.append("Set");
             } else if (TreeSet.class == collection.getClass()) {
@@ -107,14 +99,14 @@ public class CollectionCodec implements ObjectSerializer, ObjectDeserializer {
             }
             out.append(']');
         } finally {
-            serializer.setContext(context);
+            serializer.context = context;
         }
     }
 
     @SuppressWarnings({ "unchecked", "rawtypes" })
     public <T> T deserialze(DefaultJSONParser parser, Type type, Object fieldName) {
-        if (parser.getLexer().token() == JSONToken.NULL) {
-            parser.getLexer().nextToken(JSONToken.COMMA);
+        if (parser.lexer.token() == JSONToken.NULL) {
+            parser.lexer.nextToken(JSONToken.COMMA);
             return null;
         }
         
@@ -124,56 +116,31 @@ public class CollectionCodec implements ObjectSerializer, ObjectDeserializer {
             return (T) array;
         }
 
-        Class<?> rawClass = getRawClass(type);
-
-        Collection list;
-        if (rawClass == AbstractCollection.class) {
-            list = new ArrayList();
-        } else if (rawClass.isAssignableFrom(HashSet.class)) {
-            list = new HashSet();
-        } else if (rawClass.isAssignableFrom(LinkedHashSet.class)) {
-            list = new LinkedHashSet();
-        } else if (rawClass.isAssignableFrom(TreeSet.class)) {
-            list = new TreeSet();
-        } else if (rawClass.isAssignableFrom(ArrayList.class)) {
-            list = new ArrayList();
-        } else if (rawClass.isAssignableFrom(EnumSet.class)) {
-            Type itemType;
-            if (type instanceof ParameterizedType) {
-                itemType = ((ParameterizedType) type).getActualTypeArguments()[0];
-            } else {
-                itemType = Object.class;
-            }
-            list = EnumSet.noneOf((Class<Enum>)itemType);
-        } else {
-            try {
-                list = (Collection) rawClass.newInstance();
-            } catch (Exception e) {
-                throw new JSONException("create instane error, class " + rawClass.getName());
-            }
-        }
-
-        Type itemType;
+        Collection list = TypeUtils.createCollection(type);
+        
+        Type itemType = null;
         if (type instanceof ParameterizedType) {
             itemType = ((ParameterizedType) type).getActualTypeArguments()[0];
         } else {
-            itemType = Object.class;
+            Class<?> clazz = null;
+            if (type instanceof Class<?> // 
+                && !(clazz = (Class<?>) type).getName().startsWith("java.")) {
+                Type superClass = clazz.getGenericSuperclass();
+                if (superClass instanceof ParameterizedType) {
+                    itemType = ((ParameterizedType) superClass).getActualTypeArguments()[0];        
+                }
+            }
+            
+            if (itemType == null) {
+                itemType = Object.class;
+            }
         }
         parser.parseArray(itemType, list, fieldName);
 
         return (T) list;
     }
 
-    public Class<?> getRawClass(Type type) {
-
-        if (type instanceof Class<?>) {
-            return (Class<?>) type;
-        } else if (type instanceof ParameterizedType) {
-            return getRawClass(((ParameterizedType) type).getRawType());
-        } else {
-            throw new JSONException("TODO");
-        }
-    }
+  
 
     public int getFastMatchToken() {
         return JSONToken.LBRACKET;

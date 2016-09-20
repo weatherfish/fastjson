@@ -1,9 +1,10 @@
 package com.alibaba.json.test.codec;
 
+import java.io.OutputStream;
 import java.util.Collection;
 
 import com.alibaba.fastjson.JSON;
-import com.alibaba.fastjson.parser.DefaultExtJSONParser;
+import com.alibaba.fastjson.parser.DefaultJSONParser;
 import com.alibaba.fastjson.parser.DefaultJSONParser;
 import com.alibaba.fastjson.parser.Feature;
 import com.alibaba.fastjson.parser.ParserConfig;
@@ -14,22 +15,24 @@ import com.alibaba.fastjson.serializer.SerializeWriter;
 import com.alibaba.fastjson.serializer.SerializerFeature;
 
 public class FastjsonSCodec implements Codec {
-
+    public FastjsonSCodec(){
+        System.out.println("fastjson-" + JSON.VERSION);    
+    }
 
     public String getName() {
-        return "fastjson";
+        return "fastjsonS";
     }
 
     public <T> T decodeObject(String text, Class<T> clazz) {
         ParserConfig    config = new ParserConfig();
-        DefaultExtJSONParser parser = new DefaultExtJSONParser(text, config);
+        DefaultJSONParser parser = new DefaultJSONParser(text, config);
         parser.config(Feature.DisableCircularReferenceDetect, true);
         return parser.parseObject(clazz);
     }
 
     public <T> Collection<T> decodeArray(String text, Class<T> clazz) throws Exception {
         ParserConfig    config = new ParserConfig();
-        DefaultExtJSONParser parser = new DefaultExtJSONParser(text, config);
+        DefaultJSONParser parser = new DefaultJSONParser(text, config);
         parser.config(Feature.DisableCircularReferenceDetect, true);
         return parser.parseArray(clazz);
     }
@@ -69,6 +72,17 @@ public class FastjsonSCodec implements Codec {
     @SuppressWarnings("unchecked")
     public <T> T decodeObject(byte[] input, Class<T> clazz) throws Exception {
         return (T) JSON.parseObject(input, clazz, Feature.DisableCircularReferenceDetect);
+    }
+
+    @Override
+    public byte[] encodeToBytes(Object object) throws Exception {
+        // TODO Auto-generated method stub
+        return null;
+    }
+
+    @Override
+    public void encode(OutputStream out, Object object) throws Exception {
+        out.write(encodeToBytes(object));        
     }
 
 }

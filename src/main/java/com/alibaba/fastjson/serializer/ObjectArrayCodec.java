@@ -46,11 +46,7 @@ public class ObjectArrayCodec implements ObjectSerializer, ObjectDeserializer {
         Object[] array = (Object[]) object;
 
         if (object == null) {
-            if (out.isEnabled(SerializerFeature.WriteNullListAsEmpty)) {
-                out.write("[]");
-            } else {
-                out.writeNull();
-            }
+            out.writeNull(SerializerFeature.WriteNullListAsEmpty);
             return;
         }
 
@@ -63,7 +59,7 @@ public class ObjectArrayCodec implements ObjectSerializer, ObjectDeserializer {
             return;
         }
 
-        SerialContext context = serializer.getContext();
+        SerialContext context = serializer.context;
         serializer.setContext(context, object, fieldName, 0);
 
         try {
@@ -124,13 +120,13 @@ public class ObjectArrayCodec implements ObjectSerializer, ObjectDeserializer {
                 out.append(']');
             }
         } finally {
-            serializer.setContext(context);
+            serializer.context = context;
         }
     }
     
     @SuppressWarnings({ "unchecked", "rawtypes" })
     public <T> T deserialze(DefaultJSONParser parser, Type type, Object fieldName) {
-        final JSONLexer lexer = parser.getLexer();
+        final JSONLexer lexer = parser.lexer;
         if (lexer.token() == JSONToken.NULL) {
             lexer.nextToken(JSONToken.COMMA);
             return null;

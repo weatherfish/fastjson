@@ -1,34 +1,18 @@
 package com.alibaba.fastjson.serializer;
 
-import java.io.IOException;
 import java.lang.reflect.Type;
+import java.util.Collection;
+import java.util.List;
 
 import com.alibaba.fastjson.JSON;
+import com.alibaba.fastjson.JSONException;
 import com.alibaba.fastjson.parser.DefaultJSONParser;
 import com.alibaba.fastjson.parser.JSONLexer;
 import com.alibaba.fastjson.parser.JSONToken;
 import com.alibaba.fastjson.parser.deserializer.ObjectDeserializer;
 
 
-public class CharArrayCodec implements ObjectSerializer, ObjectDeserializer {
-
-    public static CharArrayCodec instance = new CharArrayCodec();
-
-    public final void write(JSONSerializer serializer, Object object, Object fieldName, Type fieldType, int features) throws IOException {
-        SerializeWriter out = serializer.out;
-        
-        if (object == null) {
-            if (out.isEnabled(SerializerFeature.WriteNullListAsEmpty)) {
-                out.write("[]");
-            } else {
-                out.writeNull();
-            }
-            return;
-        }
-
-        char[] chars = (char[]) object;
-        out.writeString(new String(chars));
-    }
+public class CharArrayCodec implements ObjectDeserializer {
 
     @SuppressWarnings("unchecked")
     public <T> T deserialze(DefaultJSONParser parser, Type clazz, Object fieldName) {
@@ -37,7 +21,7 @@ public class CharArrayCodec implements ObjectSerializer, ObjectDeserializer {
     
     @SuppressWarnings("unchecked")
     public static <T> T deserialze(DefaultJSONParser parser) {
-        final JSONLexer lexer = parser.getLexer();
+        final JSONLexer lexer = parser.lexer;
         if (lexer.token() == JSONToken.LITERAL_STRING) {
             String val = lexer.stringVal();
             lexer.nextToken(JSONToken.COMMA);
@@ -52,11 +36,32 @@ public class CharArrayCodec implements ObjectSerializer, ObjectDeserializer {
 
         Object value = parser.parse();
 
-        if (value == null) {
-            return null;
+        if (value instanceof  String) {
+            return (T) ((String) value).toCharArray();
         }
 
-        return (T) JSON.toJSONString(value).toCharArray();
+        if (value instanceof Collection) {
+            Collection<?> collection = (Collection) value;
+
+            boolean accept = true;
+            for (Object item : collection) {
+                if (item instanceof String) {
+                    int itemLength = ((String) item).length();
+                    if (itemLength != 1) {
+                        accept = false;
+                        break;
+                    }
+                }
+            }
+
+            if (!accept) {
+                throw new JSONException("can not cast to char[]");
+            }
+        }
+
+        return value == null //
+            ? null //
+            : (T) JSON.toJSONString(value).toCharArray();
     }
 
     public int getFastMatchToken() {

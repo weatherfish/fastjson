@@ -81,7 +81,7 @@ public enum SerializerFeature {
     /**
      * @since 1.1.6
      */
-    DisableCircularReferenceDetect,
+    DisableCircularReferenceDetect, // 32768
 
     /**
      * @since 1.1.9
@@ -105,6 +105,7 @@ public enum SerializerFeature {
 
     /**
      * @since 1.1.19
+     * @deprecated
      */
     DisableCheckSpecialChar,
 
@@ -131,7 +132,22 @@ public enum SerializerFeature {
     /**
      * @since 1.2.7
      */
-    IgnoreNonFieldGetter
+    IgnoreNonFieldGetter,
+    
+    /**
+     * @since 1.2.9
+     */
+    WriteNonStringValueAsString,
+    
+    /**
+     * @since 1.2.11
+     */
+    IgnoreErrorGetter,
+
+    /**
+     * @since 1.2.16
+     */
+    WriteBigDecimalAsPlain
     ;
 
     SerializerFeature(){
@@ -177,4 +193,6 @@ public enum SerializerFeature {
         
         return value;
     }
+    
+    public final static SerializerFeature[] EMPTY = new SerializerFeature[0];
 }

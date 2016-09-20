@@ -7,7 +7,6 @@ import com.alibaba.fastjson.parser.DefaultJSONParser;
 import com.alibaba.fastjson.parser.JSONLexer;
 import com.alibaba.fastjson.parser.JSONScanner;
 import com.alibaba.fastjson.parser.JSONToken;
-import com.alibaba.fastjson.util.IOUtils;
 
 public class TimeDeserializer implements ObjectDeserializer {
 
@@ -15,7 +14,7 @@ public class TimeDeserializer implements ObjectDeserializer {
 
     @SuppressWarnings("unchecked")
     public <T> T deserialze(DefaultJSONParser parser, Type clazz, Object fieldName) {
-        JSONLexer lexer = parser.getLexer();
+        JSONLexer lexer = parser.lexer;
         
         if (lexer.token() == JSONToken.COMMA) {
             lexer.nextToken(JSONToken.LITERAL_STRING);

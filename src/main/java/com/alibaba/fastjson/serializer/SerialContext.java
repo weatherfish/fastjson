@@ -3,21 +3,15 @@ package com.alibaba.fastjson.serializer;
 public class SerialContext {
 
     public final SerialContext parent;
-
     public final Object        object;
-
     public final Object        fieldName;
-
-    private int                 features;
-
-    private int                 fieldFeatures;
+    public final int           features;
 
     public SerialContext(SerialContext parent, Object object, Object fieldName, int features, int fieldFeatures){
         this.parent = parent;
         this.object = object;
         this.fieldName = fieldName;
         this.features = features;
-        this.fieldFeatures = fieldFeatures;
     }
 
     public String toString() {
@@ -31,13 +25,5 @@ public class SerialContext {
             }
 
         }
-    }
-
-    public int getFeatures() {
-        return features;
-    }
-
-    public boolean isEnabled(SerializerFeature feature) {
-        return SerializerFeature.isEnabled(features, fieldFeatures, feature);
     }
 }
