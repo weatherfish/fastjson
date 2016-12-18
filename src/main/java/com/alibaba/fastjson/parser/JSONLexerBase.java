@@ -499,7 +499,15 @@ public abstract class JSONLexerBase implements JSONLexer, Closeable {
     }
 
     public float floatValue() {
-        return Float.parseFloat(numberString());
+        String strVal = numberString();
+        float floatValue = Float.parseFloat(strVal);
+        if (floatValue == 0 || floatValue == Float.POSITIVE_INFINITY) {
+            char c0 = strVal.charAt(0);
+            if (c0 > '0' && c0 <= '9') {
+                throw new JSONException("float overflow : " + strVal);
+            }
+        }
+        return floatValue;
     }
 
     public double doubleValue() {
@@ -2673,10 +2681,11 @@ public abstract class JSONLexerBase implements JSONLexer, Closeable {
 
     protected abstract boolean charArrayCompare(char[] chars);
 
-    public final boolean isBlankInput() {
+    public boolean isBlankInput() {
         for (int i = 0;; ++i) {
             char chLocal = charAt(i);
             if (chLocal == EOI) {
+                token = JSONToken.EOF;
                 break;
             }
 

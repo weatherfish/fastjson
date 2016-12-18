@@ -59,6 +59,7 @@ import com.alibaba.fastjson.PropertyNamingStrategy;
 import com.alibaba.fastjson.annotation.JSONField;
 import com.alibaba.fastjson.annotation.JSONType;
 import com.alibaba.fastjson.parser.deserializer.Jdk8DateCodec;
+import com.alibaba.fastjson.parser.deserializer.ObjectDeserializer;
 import com.alibaba.fastjson.parser.deserializer.OptionalCodec;
 import com.alibaba.fastjson.support.springfox.SwaggerJsonSerializer;
 import com.alibaba.fastjson.util.ASMUtils;
@@ -156,7 +157,7 @@ public class SerializeConfig {
 			asm = false;
 		}
 
-		if (asm && !ASMUtils.checkName(clazz.getName())) {
+		if (asm && !ASMUtils.checkName(clazz.getSimpleName())) {
 		    asm = false;
 		}
 		
@@ -524,33 +525,17 @@ public class SerializeConfig {
                         springfoxError = true;
                     }
                 }
-                
-                boolean isCglibProxy = false;
-                boolean isJavassistProxy = false;
-                for (Class<?> item : clazz.getInterfaces()) {
-                    String interfaceName = item.getName();
-                    if (interfaceName.equals("net.sf.cglib.proxy.Factory") //
-                        || interfaceName.equals("org.springframework.cglib.proxy.Factory")) {
-                        isCglibProxy = true;
-                        break;
-                    } else if (interfaceName.equals("javassist.util.proxy.ProxyObject") //
-                            || interfaceName.equals("org.apache.ibatis.javassist.util.proxy.ProxyObject")
-                            ) {
-                        isJavassistProxy = true;
-                        break;
-                    }
-                }
 
-                if (isCglibProxy || isJavassistProxy) {
+                if (TypeUtils.isProxy(clazz)) {
                     Class<?> superClazz = clazz.getSuperclass();
 
                     ObjectSerializer superWriter = getObjectWriter(superClazz);
-                    putInternal(clazz, superWriter);
+                    put(clazz, superWriter);
                     return superWriter;
                 }
 
                 if (create) {
-                    putInternal(clazz, createJavaBeanSerializer(clazz));
+                    put(clazz, createJavaBeanSerializer(clazz));
                 }
             }
 
@@ -562,21 +547,12 @@ public class SerializeConfig {
 	public final ObjectSerializer get(Type key) {
 	    return this.serializers.get(key);
 	}
-	
-	public boolean put(Type type, ObjectSerializer value) {
-	    boolean isEnum = false;
-	    if (type instanceof Class) {
-	        Class<?> clazz = (Class<?>) type;
-	        isEnum = clazz.isEnum();
-	    }
-	    if (isEnum) {
-	        
-	    }
-	    
-	    return putInternal(type, value);
-	}
-	
-	protected boolean putInternal(Type key, ObjectSerializer value) {
-        return this.serializers.put(key, value);
+
+    public boolean put(Object type, Object value) {
+        return put((Type)type, (ObjectSerializer)value);
     }
+
+	public boolean put(Type type, ObjectSerializer value) {
+        return this.serializers.put(type, value);
+	}
 }
