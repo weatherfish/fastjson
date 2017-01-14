@@ -114,8 +114,8 @@ public class SerializeConfig {
      
         return serializer;
     }
-	
-	private final ObjectSerializer createJavaBeanSerializer(Class<?> clazz) {
+
+    private final ObjectSerializer createJavaBeanSerializer(Class<?> clazz) {
 	    SerializeBeanInfo beanInfo = TypeUtils.buildBeanInfo(clazz, null, propertyNamingStrategy);
 	    if (beanInfo.fields.length == 0 && Iterable.class.isAssignableFrom(clazz)) {
 	        return MiscCodec.instance;
@@ -415,7 +415,12 @@ public class SerializeConfig {
             } else if (JSONStreamAware.class.isAssignableFrom(clazz)) {
                 put(clazz, MiscCodec.instance);
             } else if (clazz.isEnum() || (clazz.getSuperclass() != null && clazz.getSuperclass().isEnum())) {
-                put(clazz, EnumSerializer.instance);
+                JSONType jsonType = clazz.getAnnotation(JSONType.class);
+                if (jsonType != null && jsonType.serializeEnumAsJavaBean()) {
+                    put(clazz, createJavaBeanSerializer(clazz));
+                } else {
+                    put(clazz, EnumSerializer.instance);
+                }
             } else if (clazz.isArray()) {
                 Class<?> componentType = clazz.getComponentType();
                 ObjectSerializer compObjectSerializer = getObjectWriter(componentType);
@@ -424,7 +429,7 @@ public class SerializeConfig {
                 SerializeBeanInfo beanInfo = TypeUtils.buildBeanInfo(clazz, null, propertyNamingStrategy);
                 beanInfo.features |= SerializerFeature.WriteClassName.mask;
                 put(clazz, new JavaBeanSerializer(beanInfo));
-            } else if (TimeZone.class.isAssignableFrom(clazz)) {
+            } else if (TimeZone.class.isAssignableFrom(clazz) || Map.Entry.class.isAssignableFrom(clazz)) {
                 put(clazz, MiscCodec.instance);
             } else if (Appendable.class.isAssignableFrom(clazz)) {
                 put(clazz, AppendableSerializer.instance);
@@ -555,4 +560,14 @@ public class SerializeConfig {
 	public boolean put(Type type, ObjectSerializer value) {
         return this.serializers.put(type, value);
 	}
+
+    /**
+     * 1.2.24
+     * @param enumClasses
+     */
+	public void configEnumAsJavaBean(Class<? extends Enum>... enumClasses) {
+        for (Class<? extends Enum> enumClass : enumClasses) {
+            put(enumClass, createJavaBeanSerializer(enumClass));
+        }
+    }
 }

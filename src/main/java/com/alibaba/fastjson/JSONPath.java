@@ -47,7 +47,7 @@ public class JSONPath implements JSONAware {
     }
 
     public JSONPath(String path, SerializeConfig serializeConfig, ParserConfig parserConfig){
-        if (path == null || path.isEmpty()) {
+        if (path == null || path.length() == 0) {
             throw new JSONPathException("json-path can not be null or empty");
         }
 
@@ -447,7 +447,6 @@ public class JSONPath implements JSONAware {
                 
                 String path = parent.equals("/") ?  "/" + i : parent + "/" + i;
                 paths(paths, path, item, config);
-                ++i;
             }
             
             return;
@@ -1146,7 +1145,7 @@ public class JSONPath implements JSONAware {
         }
 
         public Segement[] explain() {
-            if (path == null || path.isEmpty()) {
+            if (path == null || path.length() == 0) {
                 throw new IllegalArgumentException();
             }
 
@@ -1219,7 +1218,7 @@ public class JSONPath implements JSONAware {
                 int[] indexes = new int[indexesText.length];
                 for (int i = 0; i < indexesText.length; ++i) {
                     String str = indexesText[i];
-                    if (str.isEmpty()) {
+                    if (str.length() == 0) {
                         if (i == 0) {
                             indexes[i] = 0;
                         } else {
@@ -1447,7 +1446,6 @@ public class JSONPath implements JSONAware {
             this.eq = eq;
         }
 
-        @Override
         public boolean apply(JSONPath path, Object rootObject, Object currentObject, Object item) {
             Object propertyValue = path.getPropertyValue(item, propertyName, false);
             boolean result = value.equals(propertyValue);
@@ -2191,7 +2189,7 @@ public class JSONPath implements JSONAware {
                 FieldSerializer fieldDeser = beanSerializer.getFieldSerializer(propertyName);
                 if (fieldDeser != null) {
                     try {
-                        Object val = fieldDeser.getPropertyValue(currentObject);
+                        Object val = fieldDeser.getPropertyValueDirect(currentObject);
                         results.add(val);
                     } catch (InvocationTargetException ex) {
                         throw new JSONException("getFieldValue error." + propertyName, ex);
@@ -2338,7 +2336,6 @@ public class JSONPath implements JSONAware {
         }
     }
 
-    @Override
     public String toJSONString() {
         return JSON.toJSONString(path);
     }
