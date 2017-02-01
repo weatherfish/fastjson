@@ -64,7 +64,7 @@ public final class JSONReaderScanner extends JSONLexerBase {
         }
 
         if (buf == null) {
-            buf = new char[1024 * 8];
+            buf = new char[1024 * 16];
         }
 
         try {
@@ -165,7 +165,7 @@ public final class JSONReaderScanner extends JSONLexerBase {
             if (sp > 0) {
                 int offset;
                 offset = bufLength - sp;
-                if (ch == '"') {
+                if (ch == '"' && offset > 0) {
                     offset--;
                 }
                 System.arraycopy(buf, offset, buf, 0, sp);
@@ -298,7 +298,7 @@ public final class JSONReaderScanner extends JSONLexerBase {
     public void close() {
         super.close();
 
-        if (buf.length <= 1024 * 32) {
+        if (buf.length <= 1024 * 64) {
             BUF_LOCAL.set(buf);
         }
         this.buf = null;
