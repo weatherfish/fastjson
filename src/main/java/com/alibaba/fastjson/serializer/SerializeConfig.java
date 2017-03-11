@@ -1,5 +1,5 @@
 /*
- * Copyright 1999-2101 Alibaba Group.
+ * Copyright 1999-2017 Alibaba Group.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,6 +19,8 @@ import java.io.File;
 import java.io.Serializable;
 import java.lang.ref.SoftReference;
 import java.lang.ref.WeakReference;
+import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.lang.reflect.Type;
 import java.math.BigDecimal;
@@ -164,12 +166,25 @@ public class SerializeConfig {
 		}
 		
 		if (asm) {
-    		for(FieldInfo field : beanInfo.fields){
-    			JSONField annotation = field.getAnnotation();
+    		for(FieldInfo fieldInfo : beanInfo.fields){
+                Field field = fieldInfo.field;
+                if (field != null && !field.getType().equals(fieldInfo.fieldClass)) {
+                    asm = false;
+                    break;
+                }
+
+                Method method = fieldInfo.method;
+                if (method != null && !method.getReturnType().equals(fieldInfo.fieldClass)) {
+                    asm = false;
+                    break;
+                }
+
+    			JSONField annotation = fieldInfo.getAnnotation();
     			
     			if (annotation == null) {
     			    continue;
     			}
+
                 if ((!ASMUtils.checkName(annotation.name())) //
                         || annotation.format().length() != 0
                         || annotation.jsonDirect()
@@ -178,6 +193,13 @@ public class SerializeConfig {
     				asm = false;
     				break;
     			}
+
+                for (SerializerFeature feature : annotation.serialzeFeatures()) {
+    			    if (SerializerFeature.WriteNonStringValueAsString == feature) {
+    			        asm = false;
+    			        break;
+                    }
+                }
     		}
 		}
 		
@@ -226,10 +248,10 @@ public class SerializeConfig {
 		    if (asm) {
 		        asmFactory = new ASMSerializerFactory();
 		    }
-		} catch (NoClassDefFoundError eror) {
+		} catch (Throwable eror) {
 		    asm = false;
-		} catch (ExceptionInInitializerError error) {
-		    asm = false;
+//		} catch (ExceptionInInitializerError error) {
+//		    asm = false;
 		}
 
 		put(Boolean.class, BooleanCodec.instance);

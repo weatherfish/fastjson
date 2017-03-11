@@ -1,5 +1,5 @@
 /*
- * Copyright 1999-2101 Alibaba Group.
+ * Copyright 1999-2017 Alibaba Group.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -62,6 +62,8 @@ import com.alibaba.fastjson.parser.JSONScanner;
 import com.alibaba.fastjson.parser.ParserConfig;
 import com.alibaba.fastjson.parser.deserializer.JavaBeanDeserializer;
 import com.alibaba.fastjson.parser.deserializer.ObjectDeserializer;
+import com.alibaba.fastjson.serializer.CalendarCodec;
+import com.alibaba.fastjson.serializer.DateCodec;
 import com.alibaba.fastjson.serializer.SerializeBeanInfo;
 import com.alibaba.fastjson.serializer.SerializerFeature;
 
@@ -585,6 +587,16 @@ public class TypeUtils {
                 || "0".equals(strVal)) {
                 return Boolean.FALSE;
             }
+
+            if ("Y".equalsIgnoreCase(strVal) //
+                    || "T".equals(strVal)) {
+                return Boolean.TRUE;
+            }
+
+            if ("F".equalsIgnoreCase(strVal) //
+                    || "N".equals(strVal)) {
+                return Boolean.FALSE;
+            }
         }
 
         throw new JSONException("can not cast to boolean, value : " + value);
@@ -719,6 +731,14 @@ public class TypeUtils {
             }
             calendar.setTime(date);
             return (T) calendar;
+        }
+
+        if (clazz.getName().equals("javax.xml.datatype.XMLGregorianCalendar")) {
+            Date date = castToDate(obj);
+            Calendar calendar = Calendar.getInstance(JSON.defaultTimeZone, JSON.defaultLocale);
+            calendar.setTime(date);
+
+            return (T) CalendarCodec.instance.createXMLGregorianCalendar(calendar);
         }
 
         if (obj instanceof String) {
@@ -883,7 +903,11 @@ public class TypeUtils {
                 if (iClassObject instanceof String) {
                     String className = (String) iClassObject;
 
-                    Class<?> loadClazz = (Class<T>) loadClass(className);
+                    Class<?> loadClazz;
+                    if (config == null) {
+                        config = ParserConfig.global;
+                    }
+                    loadClazz = config.checkAutoType(className, null);
 
                     if (loadClazz == null) {
                         throw new ClassNotFoundException(className + " not found");
@@ -928,7 +952,7 @@ public class TypeUtils {
         }
     }
 
-    private static ConcurrentMap<String, Class<?>> mappings = new ConcurrentHashMap<String, Class<?>>();
+    private static ConcurrentMap<String, Class<?>> mappings = new ConcurrentHashMap<String, Class<?>>(16, 0.75f, 1);
 
     static {
         addBaseClassMappings();
@@ -962,7 +986,80 @@ public class TypeUtils {
         mappings.put("[C", char[].class);
         mappings.put("[Z", boolean[].class);
 
-        mappings.put(HashMap.class.getName(), HashMap.class);
+        Class<?>[] classes = new Class[] {
+                Object.class,
+                java.lang.Cloneable.class,
+                loadClass("java.lang.AutoCloseable"),
+                java.lang.Exception.class,
+                java.lang.RuntimeException.class,
+                java.lang.IllegalAccessError.class,
+                java.lang.IllegalAccessException.class,
+                java.lang.IllegalArgumentException.class,
+                java.lang.IllegalMonitorStateException.class,
+                java.lang.IllegalStateException.class,
+                java.lang.IllegalThreadStateException.class,
+                java.lang.IndexOutOfBoundsException.class,
+                java.lang.InstantiationError.class,
+                java.lang.InstantiationException.class,
+                java.lang.InternalError.class,
+                java.lang.InterruptedException.class,
+                java.lang.LinkageError.class,
+                java.lang.NegativeArraySizeException.class,
+                java.lang.NoClassDefFoundError.class,
+                java.lang.NoSuchFieldError.class,
+                java.lang.NoSuchFieldException.class,
+                java.lang.NoSuchMethodError.class,
+                java.lang.NoSuchMethodException.class,
+                java.lang.NullPointerException.class,
+                java.lang.NumberFormatException.class,
+                java.lang.OutOfMemoryError.class,
+                java.lang.SecurityException.class,
+                java.lang.StackOverflowError.class,
+                java.lang.StringIndexOutOfBoundsException.class,
+                java.lang.TypeNotPresentException.class,
+                java.lang.VerifyError.class,
+                java.lang.StackTraceElement.class,
+                java.util.HashMap.class,
+                java.util.Hashtable.class,
+                java.util.TreeMap.class,
+                java.util.IdentityHashMap.class,
+                java.util.WeakHashMap.class,
+                java.util.LinkedHashMap.class,
+                java.util.HashSet.class,
+                java.util.LinkedHashSet.class,
+                java.util.TreeSet.class,
+                java.util.concurrent.TimeUnit.class,
+                java.util.concurrent.ConcurrentHashMap.class,
+                loadClass("java.util.concurrent.ConcurrentSkipListMap"),
+                loadClass("java.util.concurrent.ConcurrentSkipListSet"),
+                java.util.concurrent.atomic.AtomicInteger.class,
+                java.util.concurrent.atomic.AtomicLong.class,
+                java.util.Collections.EMPTY_MAP.getClass(),
+                java.util.BitSet.class,
+                java.util.Calendar.class,
+                java.util.Date.class,
+                java.util.Locale.class,
+                java.util.UUID.class,
+                java.sql.Time.class,
+                java.sql.Date.class,
+                java.sql.Timestamp.class,
+                java.text.SimpleDateFormat.class,
+                com.alibaba.fastjson.JSONObject.class,
+                loadClass("java.awt.Rectangle"),
+                loadClass("java.awt.Point"),
+                loadClass("java.awt.Font"),
+                loadClass("java.awt.Color"),
+
+                loadClass("org.springframework.remoting.support.RemoteInvocation"),
+                loadClass("org.springframework.remoting.support.RemoteInvocationResult"),
+        };
+
+        for (Class clazz : classes) {
+            if (clazz == null) {
+                continue;
+            }
+            mappings.put(clazz.getName(), clazz);
+        }
     }
 
     public static void clearClassMapping() {
@@ -990,6 +1087,10 @@ public class TypeUtils {
         }
         
         return false;
+    }
+
+    public static Class<?> getClassFromMapping(String className) {
+        return mappings.get(className);
     }
 
     public static Class<?> loadClass(String className, ClassLoader classLoader) {
@@ -1028,7 +1129,7 @@ public class TypeUtils {
         try {
             ClassLoader contextClassLoader = Thread.currentThread().getContextClassLoader();
 
-            if (contextClassLoader != null) {
+            if (contextClassLoader != null && contextClassLoader != classLoader) {
                 clazz = contextClassLoader.loadClass(className);
                 mappings.put(className, clazz);
 

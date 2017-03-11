@@ -35,9 +35,7 @@ import java.nio.charset.Charset;
 public class FastJsonHttpMessageConverter //
         extends AbstractHttpMessageConverter<Object> //
         implements GenericHttpMessageConverter<Object> {
-
-    @Deprecated
-    protected Charset charset = IOUtils.UTF8;
+    private Charset             charset    = Charset.forName("UTF-8");
 
     @Deprecated
     protected SerializerFeature[] features = new SerializerFeature[0];
@@ -158,7 +156,11 @@ public class FastJsonHttpMessageConverter //
                 fastJsonConfig.getDateFormat(), //
                 JSON.DEFAULT_GENERATE_FEATURE, //
                 fastJsonConfig.getSerializerFeatures());
-        headers.setContentLength(len);
+
+        if (fastJsonConfig.isWriteContentLength()) {
+            headers.setContentLength(len);
+        }
+
         OutputStream out = outputMessage.getBody();
         outnew.writeTo(out);
         outnew.close();

@@ -1,5 +1,5 @@
 /*
- * Copyright 1999-2101 Alibaba Group.
+ * Copyright 1999-2017 Alibaba Group.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,10 +17,7 @@ package com.alibaba.fastjson.serializer;
 
 import java.io.IOException;
 import java.lang.reflect.Type;
-import java.util.HashMap;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
@@ -42,16 +39,16 @@ public class MapSerializer extends SerializeFilterable implements ObjectSerializ
         }
 
         Map<?, ?> map = (Map<?, ?>) object;
-
-//        if (out.isEnabled(SerializerFeature.SortField)) {
-//            if ((!(map instanceof SortedMap)) && !(map instanceof LinkedHashMap)) {
-//                try {
-//                    map = new TreeMap(map);
-//                } catch (Exception ex) {
-//                    // skip
-//                }
-//            }
-//        }
+        final int mapSortFieldMask = SerializerFeature.MapSortField.mask;
+        if ((out.features & mapSortFieldMask) != 0 || (features & mapSortFieldMask) != 0) {
+            if ((!(map instanceof SortedMap)) && !(map instanceof LinkedHashMap)) {
+                try {
+                    map = new TreeMap(map);
+                } catch (Exception ex) {
+                    // skip
+                }
+            }
+        }
 
         if (serializer.containsReference(object)) {
             serializer.writeReference(object);

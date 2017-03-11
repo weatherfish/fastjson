@@ -1,5 +1,5 @@
 /*
- * Copyright 1999-2101 Alibaba Group.
+ * Copyright 1999-2017 Alibaba Group.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,18 +15,6 @@
  */
 package com.alibaba.fastjson.parser;
 
-import static com.alibaba.fastjson.parser.JSONToken.COLON;
-import static com.alibaba.fastjson.parser.JSONToken.COMMA;
-import static com.alibaba.fastjson.parser.JSONToken.EOF;
-import static com.alibaba.fastjson.parser.JSONToken.ERROR;
-import static com.alibaba.fastjson.parser.JSONToken.LBRACE;
-import static com.alibaba.fastjson.parser.JSONToken.LBRACKET;
-import static com.alibaba.fastjson.parser.JSONToken.LITERAL_STRING;
-import static com.alibaba.fastjson.parser.JSONToken.LPAREN;
-import static com.alibaba.fastjson.parser.JSONToken.RBRACE;
-import static com.alibaba.fastjson.parser.JSONToken.RBRACKET;
-import static com.alibaba.fastjson.parser.JSONToken.RPAREN;
-
 import java.io.Closeable;
 import java.math.BigDecimal;
 import java.math.BigInteger;
@@ -40,6 +28,8 @@ import java.util.TimeZone;
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONException;
 import com.alibaba.fastjson.util.IOUtils;
+
+import static com.alibaba.fastjson.parser.JSONToken.*;
 
 /**
  * @author wenshao[szujobs@hotmail.com]
@@ -198,6 +188,14 @@ public abstract class JSONLexerBase implements JSONLexer, Closeable {
                     next();
                     token = COLON;
                     return;
+                case ';':
+                    next();
+                    token = SEMI;
+                    return;
+                case '.':
+                    next();
+                    token = DOT;
+                    return;
                 default:
                     if (isEOF()) { // JLS
                         if (token == EOF) {
@@ -211,6 +209,7 @@ public abstract class JSONLexerBase implements JSONLexer, Closeable {
                             next();
                             break;
                         }
+
                         lexError("illegal.char", String.valueOf((int) ch));
                         next();
                     }
@@ -810,6 +809,9 @@ public abstract class JSONLexerBase implements JSONLexer, Closeable {
     }
 
     public final String scanSymbolUnQuoted(final SymbolTable symbolTable) {
+        if (token == JSONToken.ERROR && pos == 0 && bp == 1) {
+            bp = 0; // adjust
+        }
         final boolean[] firstIdentifierFlags = IOUtils.firstIdentifierFlags;
         final char first = ch;
 
@@ -851,6 +853,10 @@ public abstract class JSONLexerBase implements JSONLexer, Closeable {
         }
 
         // return text.substring(np, np + sp).intern();
+
+        if (symbolTable == null) {
+            return subString(np, sp);
+        }
 
         return this.addSymbol(np, sp, hash, symbolTable);
         // return symbolTable.addSymbol(buf, np, sp, hash);
@@ -1492,6 +1498,23 @@ public abstract class JSONLexerBase implements JSONLexer, Closeable {
             }
         }
     }
+    
+    public Collection<String> newCollectionByType(Class<?> type){
+    	if (type.isAssignableFrom(HashSet.class)) {
+    		HashSet<String> list = new HashSet<String>();
+    		return list;
+        } else if (type.isAssignableFrom(ArrayList.class)) {
+        	ArrayList<String> list2 = new ArrayList<String>();
+        	return list2;
+        } else {
+            try {
+            	Collection<String> list = (Collection<String>) type.newInstance();
+            	return list;
+            } catch (Exception e) {
+                throw new JSONException(e.getMessage(), e);
+            }
+        }
+    }
 
     @SuppressWarnings("unchecked")
     public Collection<String> scanFieldStringArray(char[] fieldName, Class<?> type) {
@@ -1502,19 +1525,19 @@ public abstract class JSONLexerBase implements JSONLexer, Closeable {
             return null;
         }
 
-        Collection<String> list;
+        Collection<String> list = newCollectionByType(type);
 
-        if (type.isAssignableFrom(HashSet.class)) {
-            list = new HashSet<String>();
-        } else if (type.isAssignableFrom(ArrayList.class)) {
-            list = new ArrayList<String>();
-        } else {
-            try {
-                list = (Collection<String>) type.newInstance();
-            } catch (Exception e) {
-                throw new JSONException(e.getMessage(), e);
-            }
-        }
+//        if (type.isAssignableFrom(HashSet.class)) {
+//            list = new HashSet<String>();
+//        } else if (type.isAssignableFrom(ArrayList.class)) {
+//            list = new ArrayList<String>();
+//        } else {
+//            try {
+//                list = (Collection<String>) type.newInstance();
+//            } catch (Exception e) {
+//                throw new JSONException(e.getMessage(), e);
+//            }
+//        }
 
         // int index = bp + fieldName.length;
 

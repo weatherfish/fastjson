@@ -1,5 +1,5 @@
 /*
- * Copyright 1999-2101 Alibaba Group.
+ * Copyright 1999-2017 Alibaba Group.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,6 +17,7 @@ package com.alibaba.fastjson.util;
 
 import java.io.Closeable;
 import java.io.InputStream;
+import java.io.Reader;
 import java.nio.ByteBuffer;
 import java.nio.CharBuffer;
 import java.nio.charset.CharacterCodingException;
@@ -700,7 +701,8 @@ public class IOUtils {
                                           (((byte) 0xE0 << 12) ^
                                           ((byte) 0x80 <<  6) ^
                                           ((byte) 0x80 <<  0))));
-                        if (Character.isSurrogate(c)) {
+                        boolean isSurrogate =  c >= Character.MIN_SURROGATE && c < (Character.MAX_SURROGATE + 1);
+                        if (isSurrogate) {
                             return -1;
                         } else {
                             da[dp++] = c;
@@ -729,8 +731,8 @@ public class IOUtils {
                         !Character.isSupplementaryCodePoint(uc)) {
                         return -1;
                     } else {
-                        da[dp++] = Character.highSurrogate(uc);
-                        da[dp++] = Character.lowSurrogate(uc);
+                        da[dp++] =  (char) ((uc >>> 10) + (Character.MIN_HIGH_SURROGATE - (Character.MIN_SUPPLEMENTARY_CODE_POINT >>> 10))); // Character.highSurrogate(uc);
+                        da[dp++] = (char) ((uc & 0x3ff) + Character.MIN_LOW_SURROGATE); // Character.lowSurrogate(uc);
                     }
                     continue;
                 }
@@ -740,5 +742,27 @@ public class IOUtils {
             }
         }
         return dp;
+    }
+
+    /**
+     * @deprecated
+     */
+    public static String readAll(Reader reader) {
+        StringBuilder buf = new StringBuilder();
+
+        try {
+            char[] chars = new char[2048];
+            for (;;) {
+                int len = reader.read(chars, 0, chars.length);
+                if (len < 0) {
+                    break;
+                }
+                buf.append(chars, 0, len);
+            }
+        } catch(Exception ex) {
+            throw new JSONException("read string from reader error", ex);
+        }
+
+        return buf.toString();
     }
 }
