@@ -31,23 +31,7 @@ import java.math.BigInteger;
 import java.security.AccessControlException;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
-import java.util.AbstractCollection;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Calendar;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Date;
-import java.util.EnumSet;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.TreeSet;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
@@ -416,7 +400,16 @@ public class TypeUtils {
                 return null;
             }
 
-            longValue = Long.parseLong(strVal);
+            if (isNumber(strVal)) {
+                longValue = Long.parseLong(strVal);
+            } else {
+                JSONScanner scanner = new JSONScanner(strVal);
+                if (scanner.scanISO8601DateIfMatch(false)) {
+                    longValue = scanner.getCalendar().getTime().getTime();
+                } else {
+                    throw new JSONException("can not cast to Timestamp, value : " + strVal);
+                }
+            }
         }
 
         if (longValue <= 0) {
@@ -457,14 +450,40 @@ public class TypeUtils {
                 return null;
             }
 
-            longValue = Long.parseLong(strVal);
+            if (isNumber(strVal)) {
+                longValue = Long.parseLong(strVal);
+            } else {
+                JSONScanner scanner = new JSONScanner(strVal);
+                if (scanner.scanISO8601DateIfMatch(false)) {
+                    longValue = scanner.getCalendar().getTime().getTime();
+                } else {
+                    throw new JSONException("can not cast to Timestamp, value : " + strVal);
+                }
+            }
         }
 
         if (longValue <= 0) {
-            throw new JSONException("can not cast to Date, value : " + value);
+            throw new JSONException("can not cast to Timestamp, value : " + value);
         }
 
         return new java.sql.Timestamp(longValue);
+    }
+
+    public static boolean isNumber(String str) {
+        for (int i = 0; i < str.length(); ++i) {
+            char ch = str.charAt(i);
+            if (ch == '+' || ch == '-') {
+                if (i != 0) {
+                    return false;
+                } else {
+                    continue;
+                }
+            } else if (ch < '0' || ch > '9') {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     public static Long castToLong(Object value) {
@@ -753,9 +772,27 @@ public class TypeUtils {
             if (clazz == java.util.Currency.class) {
                 return (T) java.util.Currency.getInstance(strVal);
             }
+
+            if (clazz == java.util.Locale.class) {
+                return (T) toLocale(strVal);
+            }
         }
 
         throw new JSONException("can not cast to : " + clazz.getName());
+    }
+
+    public static Locale toLocale(String strVal) {
+        String[] items = strVal.split("_");
+
+        if (items.length == 1) {
+            return new Locale(items[0]);
+        }
+
+        if (items.length == 2) {
+            return new Locale(items[0], items[1]);
+        }
+
+        return new Locale(items[0], items[1], items[2]);
     }
 
     @SuppressWarnings({ "unchecked", "rawtypes" })
@@ -932,6 +969,20 @@ public class TypeUtils {
                                                   new Class<?>[] { clazz }, object);
             }
 
+            if (clazz == Locale.class) {
+                Object arg0 = map.get("language");
+                Object arg1 = map.get("country");
+                if (arg0 instanceof String) {
+                    String language = (String) arg0;
+                    if (arg1 instanceof String) {
+                        String country = (String) arg1;
+                        return (T) new Locale(language, country);
+                    } else if (arg1 == null) {
+                        return (T) new Locale(language);
+                    }
+                }
+            }
+
             if (config == null) {
                 config = ParserConfig.getGlobalInstance();
             }
@@ -943,7 +994,7 @@ public class TypeUtils {
             }
             
             if (javaBeanDeser == null) {
-                throw new JSONException("can not get javaBeanDeserializer");
+                throw new JSONException("can not get javaBeanDeserializer. " + clazz.getName());
             }
             
             return (T) javaBeanDeser.createInstance(map, config);
